@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doom-Gate: Focus Command Center</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Doom-Gate</h1>
+            <div class="token-wallet">
+                <span id="token-count">...</span> <span class="token-label">Focus Tokens</span>
+            </div>
+        </header>
+
+        <main>
+            <section class="shop-section">
+                <h2>Tech-Tree / Shop</h2>
+                <div id="tech-tree" class="tech-grid">
+                    <!-- Nodes will be rendered here -->
+                </div>
+            </section>
+
+            <section class="quiz-section">
+                <h2>Earn Tokens (Quiz)</h2>
+                <button id="btn-generate-quiz" class="btn primary">Generate AI Quiz</button>
+                
+                <div id="quiz-container" class="hidden">
+                    <p id="quiz-question" class="question-text"></p>
+                    <div id="quiz-options" class="options-grid"></div>
+                </div>
+                
+                <div id="quiz-feedback" class="feedback"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
