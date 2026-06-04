@@ -1,10 +1,10 @@
-# Doom-Gate: Focus Command Center
+# Doom-Gate: Focus Casino
 
-Doom-Gate is an Anti-Doomscrolling City Builder. Build a neon metropolis by staying focused and passing neural challenges.
+Doom-Gate: Focus Casino is a high-stakes productivity application where users bet their tokens on their own ability to focus. Stay focused to double your tokens, or get distracted and face immediate liquidation!
 
 ## Overview
 
-The application features a modern architecture utilizing C# ASP.NET Core for the backend and a lightweight Vanilla JavaScript frontend.
+The application features a modern, streamlined architecture utilizing C# ASP.NET Core (Minimal API) for the backend and a lightweight Vanilla JavaScript frontend.
 
 ## Quick Start
 

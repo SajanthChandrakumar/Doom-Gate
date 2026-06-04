@@ -1,47 +1,44 @@
-# Doom-Gate Architecture
+# Doom-Gate: Focus Casino Architecture
 
-This document describes the high-level architecture of the Doom-Gate application.
+This document describes the high-level architecture of the Doom-Gate: Focus Casino application.
 
 ## System Components
 
-The application is divided into two primary components: the Backend API and the Vanilla JavaScript Frontend.
+The application is divided into two primary components: a streamlined Backend API and a Vanilla JavaScript Frontend.
 
-### 1. Backend (C# ASP.NET Core)
+### 1. Backend (C# ASP.NET Core Minimal API)
 
-The backend is built as a structured N-Tier application using .NET 8, organized into Models, Services, and Controllers.
+The backend is built as a highly consolidated Minimal API using .NET 8. It handles the core gambling logic, state management, and external AI integrations directly within `Program.cs`.
 
-- API Framework: ASP.NET Core MVC (Controllers)
+- API Framework: ASP.NET Core Minimal APIs
 - Language: C#
-- State Management: Handled via `GameStateService` (Singleton injection)
-- AI Integration: Handled via `GeminiService` using direct HTTP integration with the Google Gemini REST API
-
-#### Folder Structure
-- **Models**: Contains `DomainModels` (UserState, QuizSession), `RequestModels`, and `ResponseModels`.
-- **Services**: Encapsulates business logic (`GameStateService`) and external API calls (`GeminiService`).
-- **Controllers**: Handles routing and HTTP requests (`StateController`, `QuizController`).
-
-#### Primary Endpoints:
-- GET /api/state: Retrieves the user's focus tokens and unlocked nodes.
-- POST /api/shop/unlock: Processes a node purchase if the user has sufficient tokens.
-- GET /api/quiz/generate: Requests a JSON-formatted quiz question from Gemini AI.
-- POST /api/quiz/submit: Validates the user's answer against the securely stored correct answer.
+- State Management: In-Memory static variables managing the user's `Wallet` and `ActiveStake`
+- AI Integration: Direct HTTP integration with the Google Gemini REST API via HttpClient for the "Last Chance" quiz
+- Primary Endpoints:
+  - GET /api/casino/state: Retrieves the user's total tokens and current active stake (if any).
+  - POST /api/casino/stake: Accepts a stake amount and duration, deducting tokens and initiating the focus session.
+  - POST /api/casino/liquidate: Destroys the active stake completely if the user loses focus.
+  - POST /api/casino/claim: Validates the elapsed time and rewards the user with a 2x multiplier if successful.
+  - GET /api/quiz/generate: Requests a JSON-formatted computer-science quiz from Gemini AI.
+  - POST /api/quiz/submit: Validates the user's answer. A correct answer rescues the stake (with a 10% penalty), while a wrong answer triggers immediate liquidation.
 
 ### 2. Frontend (Vanilla JavaScript)
 
-The frontend is a lightweight client built without heavy frameworks.
+The frontend is a lightweight client built without heavy frameworks to ensure maximum performance and simplicity.
 
 - Technologies: HTML5, CSS3, Vanilla JavaScript
-- Styling: Custom CSS variables for a dark-mode neon theme
-- State Synchronization: Interacts asynchronously with the C# backend to display token counts, tech tree progression, and AI-generated quizzes.
-- Component Logic: Separated into clear functional blocks inside app.js (Initialization, API Calls, UI Rendering).
+- Styling: Custom CSS variables for a dark-mode neon casino theme
+- State Synchronization: Interacts asynchronously with the C# backend to display token counts, active stakes, countdown timers, and AI-generated rescue quizzes.
+- Component Logic: Separated into clear functional blocks inside app.js (Initialization, Casino API Calls, Timer Management, UI Rendering).
 
-## Data Flow
+## Data Flow (Staking & Rescue Mechanism)
 
-1. The user requests a quiz on the Frontend.
-2. The Frontend calls GET /api/quiz/generate on the Backend.
-3. The Backend constructs a prompt and calls the Gemini REST API.
-4. Gemini returns the quiz data in JSON format.
-5. The Backend parses the JSON, stores the correct answer in memory (mapped to a unique quiz ID), and sends the question and options back to the Frontend.
-6. The user selects an option and submits it.
-7. The Frontend calls POST /api/quiz/submit with the selected index and quiz ID.
-8. The Backend verifies the answer, updates the user's token balance, and responds with the result.
+1. The user places a bet on the Frontend.
+2. The Frontend calls POST /api/casino/stake.
+3. The Backend verifies funds, creates an `ActiveStake`, and starts the timer.
+4. If the user maintains focus until the timer ends, they call POST /api/casino/claim and double their bet.
+5. If the user loses focus, they can attempt a rescue by requesting a quiz.
+6. The Frontend calls GET /api/quiz/generate on the Backend.
+7. The Backend calls the Gemini REST API, generates a question, securely stores the correct answer in memory, and returns the options.
+8. The Frontend calls POST /api/quiz/submit with the user's answer.
+9. The Backend verifies the answer. Success deducts a 10% penalty but saves the stake; failure instantly liquidates the stake.
