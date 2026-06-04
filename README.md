@@ -1,20 +1,39 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Doom-Gate: Focus Command Center
 
-# Run and deploy your AI Studio app
+Doom-Gate is an Anti-Doomscrolling City Builder. Build a neon metropolis by staying focused and passing neural challenges.
 
-This contains everything you need to run your app locally.
+## Overview
 
-View your app in AI Studio: https://ai.studio/apps/3944be9c-1913-445c-b906-36e213b74970
+The application features a modern architecture utilizing C# ASP.NET Core for the backend and a lightweight Vanilla JavaScript frontend.
 
-## Run Locally
+## Quick Start
 
-**Prerequisites:**  Node.js
+### 1. Requirements
 
+- .NET 8.0 SDK or newer
+- An active Gemini API Key
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 2. Configure Environment
+
+In the root directory, create a .env file or configure the application settings to include your API key. Alternatively, you can use environment variables:
+
+export GEMINI_API_KEY="YOUR_API_KEY_HERE"
+
+### 3. Run the Backend
+
+Navigate to the Backend directory and run the application:
+
+cd Backend
+dotnet run
+
+The server will start locally, typically on http://localhost:5000.
+
+### 4. Run the Frontend
+
+The frontend is a pure HTML/CSS/JS application. You do not need a complex build tool to run it.
+You can open the Frontend/index.html file in your browser directly, or serve it using any local HTTP server. For example:
+
+cd Frontend
+python3 -m http.server 3000
+
+Then open http://localhost:3000 in your browser.
