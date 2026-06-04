@@ -8,17 +8,23 @@ The application is divided into two primary components: the Backend API and the 
 
 ### 1. Backend (C# ASP.NET Core)
 
-The backend is built as a Minimal API using .NET 8. It handles business logic, state management, and external API integrations.
+The backend is built as a structured N-Tier application using .NET 8, organized into Models, Services, and Controllers.
 
-- API Framework: ASP.NET Core Minimal APIs
+- API Framework: ASP.NET Core MVC (Controllers)
 - Language: C#
-- State Management: In-Memory Singleton (for prototype purposes)
-- AI Integration: Direct HTTP integration with the Google Gemini REST API via HttpClient
-- Primary Endpoints:
-  - GET /api/state: Retrieves the user's focus tokens and unlocked nodes.
-  - POST /api/shop/unlock: Processes a node purchase if the user has sufficient tokens.
-  - GET /api/quiz/generate: Requests a JSON-formatted quiz question from Gemini AI.
-  - POST /api/quiz/submit: Validates the user's answer against the securely stored correct answer.
+- State Management: Handled via `GameStateService` (Singleton injection)
+- AI Integration: Handled via `GeminiService` using direct HTTP integration with the Google Gemini REST API
+
+#### Folder Structure
+- **Models**: Contains `DomainModels` (UserState, QuizSession), `RequestModels`, and `ResponseModels`.
+- **Services**: Encapsulates business logic (`GameStateService`) and external API calls (`GeminiService`).
+- **Controllers**: Handles routing and HTTP requests (`StateController`, `QuizController`).
+
+#### Primary Endpoints:
+- GET /api/state: Retrieves the user's focus tokens and unlocked nodes.
+- POST /api/shop/unlock: Processes a node purchase if the user has sufficient tokens.
+- GET /api/quiz/generate: Requests a JSON-formatted quiz question from Gemini AI.
+- POST /api/quiz/submit: Validates the user's answer against the securely stored correct answer.
 
 ### 2. Frontend (Vanilla JavaScript)
 
