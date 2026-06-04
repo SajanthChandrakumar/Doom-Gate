@@ -3,32 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Doom-Gate: Focus Command Center</title>
+    <title>Doom-Gate: Focus Casino</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="app-container">
         <header>
-            <h1>Doom-Gate</h1>
+            <h1>Doom-Gate: Casino</h1>
             <div class="token-wallet">
-                <span id="token-count">...</span> <span class="token-label">Focus Tokens</span>
+                <span id="token-count">...</span> <span class="token-label">Tokens</span>
             </div>
         </header>
 
         <main>
-            <section class="shop-section">
-                <h2>Tech-Tree / Shop</h2>
-                <div id="tech-tree" class="tech-grid">
-                    <!-- Nodes will be rendered here -->
+            <section class="casino-section">
+                <h2>Stake Your Focus</h2>
+                <div id="stake-form" class="stake-form">
+                    <input type="number" id="stake-amount" placeholder="Tokens to Stake" min="10" />
+                    <input type="number" id="stake-duration" placeholder="Duration (Minutes)" min="1" />
+                    <button id="btn-stake" class="btn primary">Place Bet</button>
+                </div>
+                
+                <div id="active-stake-container" class="hidden stake-active-box">
+                    <h3>Active Stake</h3>
+                    <p>Amount: <strong id="active-amount">0</strong> Tokens</p>
+                    <p>Time Left: <strong id="time-left">00:00</strong></p>
+                    
+                    <div class="action-buttons">
+                        <button id="btn-claim" class="btn success" disabled>Claim Winnings</button>
+                        <button id="btn-distracted" class="btn danger">I Got Distracted (Liquidate)</button>
+                        <button id="btn-last-chance" class="btn warning">Rescue Stake (AI Quiz)</button>
+                    </div>
                 </div>
             </section>
 
-            <section class="quiz-section">
-                <h2>Earn Tokens (Quiz)</h2>
-                <button id="btn-generate-quiz" class="btn primary">Generate AI Quiz</button>
+            <section id="quiz-section" class="quiz-section hidden">
+                <h2>Last Chance Rescue</h2>
+                <p>Answer correctly to save your stake (10% penalty applies). Wrong answer = Instant Liquidation.</p>
                 
-                <div id="quiz-container" class="hidden">
-                    <p id="quiz-question" class="question-text"></p>
+                <div id="quiz-container">
+                    <p id="quiz-question" class="question-text">Loading AI question...</p>
                     <div id="quiz-options" class="options-grid"></div>
                 </div>
                 

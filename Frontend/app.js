@@ -1,103 +1,143 @@
-// Base URL for the C# API
-// Assuming the ASP.NET Core API is running locally on port 5000 
-// Ensure the port matches what the dotnet console prints (usually http://localhost:5000 or http://localhost:5001)
 const API_BASE = 'http://localhost:5000/api';
 
 // DOM Elements
 const tokenCountEl = document.getElementById('token-count');
-const techTreeEl = document.getElementById('tech-tree');
-const btnGenerateQuiz = document.getElementById('btn-generate-quiz');
-const quizContainer = document.getElementById('quiz-container');
+const stakeFormEl = document.getElementById('stake-form');
+const stakeAmountInput = document.getElementById('stake-amount');
+const stakeDurationInput = document.getElementById('stake-duration');
+const btnStake = document.getElementById('btn-stake');
+
+const activeStakeContainer = document.getElementById('active-stake-container');
+const activeAmountEl = document.getElementById('active-amount');
+const timeLeftEl = document.getElementById('time-left');
+
+const btnClaim = document.getElementById('btn-claim');
+const btnDistracted = document.getElementById('btn-distracted');
+const btnLastChance = document.getElementById('btn-last-chance');
+
+const quizSection = document.getElementById('quiz-section');
 const quizQuestionEl = document.getElementById('quiz-question');
 const quizOptionsEl = document.getElementById('quiz-options');
 const quizFeedbackEl = document.getElementById('quiz-feedback');
 
 // State
 let userTokens = 0;
-let unlockedNodes = [];
+let activeStake = null;
 let currentQuizId = null;
-
-// Available Shop Nodes for Prototype
-const shopNodes = [
-    { id: 'root', title: 'Root Node', cost: 0 },
-    { id: 'speed_upgrade', title: 'Speed Upgrade I', cost: 50 },
-    { id: 'shield_boost', title: 'Shield Boost', cost: 100 },
-    { id: 'plasma_canon', title: 'Plasma Canon', cost: 200 }
-];
+let timerInterval = null;
 
 // --- Initialization ---
 async function init() {
     await fetchState();
-    renderTechTree();
 }
 
 // --- API Calls ---
 async function fetchState() {
     try {
-        const res = await fetch(`${API_BASE}/state`);
-        if (!res.ok) throw new Error('Failed to fetch state');
+        const res = await fetch(`${API_BASE}/casino/state`);
         const data = await res.json();
         
-        userTokens = data.focusTokens;
-        unlockedNodes = data.unlockedNodes;
+        userTokens = data.totalTokens;
+        activeStake = data.activeStake;
         
-        updateTokenDisplay();
+        updateUI();
     } catch (err) {
         console.error('API Error:', err);
-        tokenCountEl.innerText = 'Error connecting to API';
     }
 }
 
-async function unlockNode(nodeId, cost) {
+async function placeStake() {
+    const amount = parseInt(stakeAmountInput.value);
+    const duration = parseInt(stakeDurationInput.value);
+    
+    if (!amount || !duration || amount <= 0 || duration <= 0) {
+        alert("Enter valid amount and duration.");
+        return;
+    }
+    
+    btnStake.disabled = true;
+    
     try {
-        const res = await fetch(`${API_BASE}/shop/unlock`, {
+        const res = await fetch(`${API_BASE}/casino/stake`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nodeId, cost })
+            body: JSON.stringify({ stakeAmount: amount, durationMinutes: duration })
         });
         
         const data = await res.json();
         if (data.success) {
-            userTokens = data.remainingTokens;
-            unlockedNodes.push(nodeId);
-            updateTokenDisplay();
-            renderTechTree();
+            userTokens = data.newBalance;
+            activeStake = data.activeStake;
+            updateUI();
         } else {
-            alert(data.error || 'Failed to unlock');
+            alert(data.error);
         }
     } catch (err) {
-        console.error('API Error:', err);
+        console.error('Stake Error:', err);
+    } finally {
+        btnStake.disabled = false;
     }
 }
 
-async function generateQuiz() {
-    btnGenerateQuiz.disabled = true;
-    btnGenerateQuiz.innerText = 'Generating (AI)...';
-    quizFeedbackEl.innerText = '';
-    quizContainer.classList.add('hidden');
+async function liquidateStake() {
+    try {
+        const res = await fetch(`${API_BASE}/casino/liquidate`, { method: 'POST' });
+        const data = await res.json();
+        
+        if (data.status === 'liquidated') {
+            userTokens = data.newBalance;
+            activeStake = null;
+            alert("Stake liquidated. You lost the bet.");
+            updateUI();
+        }
+    } catch (err) {
+        console.error('Liquidate Error:', err);
+    }
+}
+
+async function claimWinnings() {
+    try {
+        const res = await fetch(`${API_BASE}/casino/claim`, { method: 'POST' });
+        const data = await res.json();
+        
+        if (data.status === 'won') {
+            userTokens = data.newBalance;
+            activeStake = null;
+            alert(`You won ${data.winnings} tokens!`);
+            updateUI();
+        } else if (data.error) {
+            alert(data.error);
+        }
+    } catch (err) {
+        console.error('Claim Error:', err);
+    }
+}
+
+async function triggerLastChance() {
+    btnLastChance.disabled = true;
+    quizSection.classList.remove('hidden');
+    quizQuestionEl.innerText = "Loading AI question...";
+    quizOptionsEl.innerHTML = "";
+    quizFeedbackEl.innerText = "";
     
     try {
         const res = await fetch(`${API_BASE}/quiz/generate`);
         const data = await res.json();
         
         if (data.error || data.detail) {
-            throw new Error(data.error || data.detail || 'API Error');
+            throw new Error(data.error || data.detail);
         }
         
         currentQuizId = data.quizId;
         renderQuiz(data.question, data.options);
     } catch (err) {
-        console.error('Quiz Error:', err);
-        quizFeedbackEl.innerText = `Error: ${err.message}. Make sure C# backend is running.`;
-        quizFeedbackEl.style.color = 'var(--danger)';
-    } finally {
-        btnGenerateQuiz.disabled = false;
-        btnGenerateQuiz.innerText = 'Generate AI Quiz';
+        console.error('Quiz Gen Error:', err);
+        quizFeedbackEl.innerText = `Error: ${err.message}`;
     }
 }
 
 async function submitQuiz(selectedIndex) {
-    quizOptionsEl.innerHTML = ''; // disable further clicks
+    quizOptionsEl.innerHTML = ''; 
     quizFeedbackEl.innerText = 'Submitting...';
     
     try {
@@ -109,28 +149,26 @@ async function submitQuiz(selectedIndex) {
         
         const data = await res.json();
         
-        if (data.error) {
-            quizFeedbackEl.innerText = data.error;
-            quizFeedbackEl.style.color = 'var(--danger)';
-            return;
-        }
-        
-        userTokens = data.tokens;
-        updateTokenDisplay();
-        
-        if (data.status === 'unlocked') {
-            quizFeedbackEl.innerText = 'Correct! +10 Tokens';
-            quizFeedbackEl.style.color = 'var(--success)';
+        if (data.status === 'saved') {
+            activeStake = data.currentStake;
+            quizFeedbackEl.innerText = `Correct! Stake saved (Penalty applied: ${data.penalty})`;
+            quizFeedbackEl.style.color = '#10b981';
+            setTimeout(() => {
+                quizSection.classList.add('hidden');
+                updateUI();
+            }, 3000);
+        } else if (data.status === 'liquidated') {
+            activeStake = null;
+            userTokens = data.newBalance;
+            quizFeedbackEl.innerText = `Wrong! Immediate Liquidation.`;
+            quizFeedbackEl.style.color = '#ef4444';
+            setTimeout(() => {
+                quizSection.classList.add('hidden');
+                updateUI();
+            }, 3000);
         } else {
-            quizFeedbackEl.innerText = 'Wrong! -5 Tokens';
-            quizFeedbackEl.style.color = 'var(--danger)';
+            quizFeedbackEl.innerText = data.error || 'Error submitting quiz';
         }
-        
-        currentQuizId = null;
-        setTimeout(() => {
-            quizContainer.classList.add('hidden');
-            quizFeedbackEl.innerText = '';
-        }, 3000);
         
     } catch (err) {
         console.error('Submit Error:', err);
@@ -139,43 +177,22 @@ async function submitQuiz(selectedIndex) {
 }
 
 // --- UI Rendering ---
-function updateTokenDisplay() {
+function updateUI() {
     tokenCountEl.innerText = userTokens;
-}
-
-function renderTechTree() {
-    techTreeEl.innerHTML = '';
     
-    shopNodes.forEach(node => {
-        const isUnlocked = unlockedNodes.includes(node.id);
-        const canAfford = userTokens >= node.cost;
+    if (activeStake) {
+        stakeFormEl.classList.add('hidden');
+        activeStakeContainer.classList.remove('hidden');
+        activeAmountEl.innerText = activeStake.stakedAmount;
+        btnLastChance.disabled = false;
         
-        const card = document.createElement('div');
-        card.className = `node-card ${isUnlocked ? 'node-unlocked' : ''}`;
-        
-        card.innerHTML = `
-            <div>
-                <h3>${node.title}</h3>
-                <div class="node-cost">${node.cost} Tokens</div>
-            </div>
-        `;
-        
-        if (isUnlocked) {
-            const status = document.createElement('div');
-            status.className = 'status-label';
-            status.innerText = 'Unlocked';
-            card.appendChild(status);
-        } else {
-            const btn = document.createElement('button');
-            btn.className = 'btn';
-            btn.innerText = 'Unlock';
-            btn.disabled = !canAfford;
-            btn.onclick = () => unlockNode(node.id, node.cost);
-            card.appendChild(btn);
-        }
-        
-        techTreeEl.appendChild(card);
-    });
+        startTimer();
+    } else {
+        stakeFormEl.classList.remove('hidden');
+        activeStakeContainer.classList.add('hidden');
+        quizSection.classList.add('hidden');
+        stopTimer();
+    }
 }
 
 function renderQuiz(question, options) {
@@ -189,12 +206,48 @@ function renderQuiz(question, options) {
         btn.onclick = () => submitQuiz(index);
         quizOptionsEl.appendChild(btn);
     });
+}
+
+function startTimer() {
+    stopTimer();
     
-    quizContainer.classList.remove('hidden');
+    timerInterval = setInterval(() => {
+        if (!activeStake) return stopTimer();
+        
+        // Correctly parse time handling UTC
+        // Ensure activeStake.startTime is parsed as UTC
+        const startTimeStr = activeStake.startTime.endsWith('Z') ? activeStake.startTime : activeStake.startTime + 'Z';
+        const startTime = new Date(startTimeStr).getTime();
+        const endTime = startTime + (activeStake.targetDurationMinutes * 60000);
+        const now = Date.now();
+        
+        const remainingMs = endTime - now;
+        
+        if (remainingMs <= 0) {
+            timeLeftEl.innerText = "00:00 (Ready to Claim!)";
+            btnClaim.disabled = false;
+            stopTimer();
+        } else {
+            const m = Math.floor(remainingMs / 60000);
+            const s = Math.floor((remainingMs % 60000) / 1000);
+            timeLeftEl.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            btnClaim.disabled = true;
+        }
+    }, 1000);
+}
+
+function stopTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
 }
 
 // --- Event Listeners ---
-btnGenerateQuiz.addEventListener('click', generateQuiz);
+btnStake.addEventListener('click', placeStake);
+btnDistracted.addEventListener('click', liquidateStake);
+btnClaim.addEventListener('click', claimWinnings);
+btnLastChance.addEventListener('click', triggerLastChance);
 
 // Run
 init();

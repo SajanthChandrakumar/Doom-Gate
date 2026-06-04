@@ -128,42 +128,34 @@ h2 {
     text-align: center;
 }
 
-/* Tech Tree */
-.tech-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
-}
-
-.node-card {
-    background: #334155;
-    border: 1px solid #475569;
-    padding: 1rem;
-    border-radius: 0.5rem;
+/* Update specific to Casino elements */
+.stake-form {
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.node-card h3 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.1rem;
-}
-
-.node-cost {
-    color: var(--text-secondary);
+    gap: 1rem;
     margin-bottom: 1rem;
-    font-size: 0.9rem;
 }
 
-.node-unlocked {
-    border-color: var(--success);
-    background: rgba(16, 185, 129, 0.1);
+.stake-form input {
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: white;
 }
 
-.status-label {
-    color: var(--success);
-    font-weight: bold;
-    text-align: center;
-    padding: 0.5rem;
+.stake-active-box {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid var(--accent);
+    padding: 1.5rem;
+    border-radius: 0.75rem;
 }
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.btn.success { background: var(--success); }
+.btn.danger { background: var(--danger); }
+.btn.warning { background: #f59e0b; color: #fff; }
