@@ -4,53 +4,172 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Doom-Gate: Focus Casino</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="app-container">
-        <header>
-            <h1>Doom-Gate: Casino</h1>
-            <div class="token-wallet">
-                <span id="token-count">...</span> <span class="token-label">Tokens</span>
+        <!-- ===== Header / HUD ===== -->
+        <header class="hud">
+            <div class="hud__brand">
+                <h1>Doom-Gate</h1>
+                <span class="hud__tagline">Focus Casino</span>
+            </div>
+
+            <div class="hud__stats">
+                <button id="daily-bonus" class="daily-bonus hidden" title="Claim your daily focus bonus">
+                    🎁 Daily Bonus
+                </button>
+
+                <div class="streak" id="streak" title="Daily focus streak">
+                    <span class="streak__flame">🔥</span>
+                    <span id="streak-days">0</span>
+                </div>
+
+                <div class="level" title="Your focus rank">
+                    <div class="level__top">
+                        <span class="level__badge">Lv <span id="level-num">1</span></span>
+                        <span class="level__title" id="level-title">Distractible</span>
+                    </div>
+                    <div class="xpbar"><div class="xpbar__fill" id="xp-fill"></div></div>
+                </div>
+
+                <div class="wallet" title="Your token balance">
+                    <span id="token-count">0</span>
+                    <span class="wallet__label">tokens</span>
+                </div>
             </div>
         </header>
 
         <main>
-            <section class="casino-section">
+            <!-- ===== Place a stake ===== -->
+            <section class="card" id="stake-card">
                 <h2>Stake Your Focus</h2>
+                <p class="card__hint">Bet tokens on yourself. Survive the timer to multiply them. Get distracted and they're gone.</p>
+
                 <div id="stake-form" class="stake-form">
-                    <input type="number" id="stake-amount" placeholder="Tokens to Stake" min="10" />
-                    <input type="number" id="stake-duration" placeholder="Duration (Minutes)" min="1" />
-                    <button id="btn-stake" class="btn primary">Place Bet</button>
+                    <label class="field">
+                        <span>Stake</span>
+                        <input type="number" id="stake-amount" placeholder="100" min="10" value="100" />
+                    </label>
+                    <label class="field">
+                        <span>Focus for (minutes)</span>
+                        <input type="number" id="stake-duration" placeholder="25" min="1" value="25" />
+                    </label>
                 </div>
-                
-                <div id="active-stake-container" class="hidden stake-active-box">
-                    <h3>Active Stake</h3>
-                    <p>Amount: <strong id="active-amount">0</strong> Tokens</p>
-                    <p>Time Left: <strong id="time-left">00:00</strong></p>
-                    
-                    <div class="action-buttons">
-                        <button id="btn-claim" class="btn success" disabled>Claim Winnings</button>
-                        <button id="btn-distracted" class="btn danger">I Got Distracted (Liquidate)</button>
-                        <button id="btn-last-chance" class="btn warning">Rescue Stake (AI Quiz)</button>
+
+                <div class="chips" id="quick-picks">
+                    <button class="chip" data-amount="50">50</button>
+                    <button class="chip" data-amount="100">100</button>
+                    <button class="chip" data-amount="250">250</button>
+                    <button class="chip" data-amount="all">All in 🎲</button>
+                </div>
+
+                <div class="payout-preview" id="payout-preview">
+                    <div class="payout-preview__big">
+                        Win <strong id="preview-payout">200</strong>
+                        <span class="payout-preview__mult" id="preview-mult">2.0×</span>
                     </div>
+                    <ul class="payout-preview__breakdown" id="preview-breakdown"></ul>
+                </div>
+
+                <button id="btn-stake" class="btn btn--primary btn--lg">Place Bet 🎯</button>
+            </section>
+
+            <!-- ===== Active stake ===== -->
+            <section class="card card--active hidden" id="active-card">
+                <div class="active-head">
+                    <h2>Focus In Progress</h2>
+                    <span class="strikes" id="strikes" title="Distraction strikes"></span>
+                </div>
+
+                <div class="timer-ring">
+                    <svg viewBox="0 0 120 120" class="timer-ring__svg">
+                        <circle class="timer-ring__track" cx="60" cy="60" r="54"></circle>
+                        <circle class="timer-ring__bar" id="ring-bar" cx="60" cy="60" r="54"></circle>
+                    </svg>
+                    <div class="timer-ring__label">
+                        <span id="time-left">00:00</span>
+                        <small>remaining</small>
+                    </div>
+                </div>
+
+                <div class="active-meta">
+                    <div><span class="active-meta__k">Staked</span><span id="active-amount">0</span></div>
+                    <div><span class="active-meta__k">Pays out</span><span id="active-payout">0</span></div>
+                    <div><span class="active-meta__k">Multiplier</span><span id="active-mult">2.0×</span></div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="btn-claim" class="btn btn--success" disabled>Claim Winnings 💰</button>
+                    <button id="btn-rescue" class="btn btn--warning">Rescue (AI Quiz) 🧠</button>
+                    <button id="btn-distracted" class="btn btn--danger">I Got Distracted 💀</button>
                 </div>
             </section>
 
-            <section id="quiz-section" class="quiz-section hidden">
-                <h2>Last Chance Rescue</h2>
-                <p>Answer correctly to save your stake (10% penalty applies). Wrong answer = Instant Liquidation.</p>
-                
-                <div id="quiz-container">
-                    <p id="quiz-question" class="question-text">Loading AI question...</p>
-                    <div id="quiz-options" class="options-grid"></div>
+            <!-- ===== Focus Guard ===== -->
+            <section class="card" id="guard-card">
+                <div class="guard-head">
+                    <h2>Focus Guard</h2>
+                    <span class="guard-status" id="guard-status">Disarmed</span>
                 </div>
-                
-                <div id="quiz-feedback" class="feedback"></div>
+                <p class="card__hint">
+                    Arms automatically while a stake is live. Leave this tab — or open a blocked app on iOS —
+                    and Doom-Gate strikes your stake. One strike forces a rescue; two liquidates you.
+                </p>
+
+                <div class="blocklist" id="blocklist"></div>
+
+                <details class="ios-howto">
+                    <summary>📱 Block social apps on iOS (Screen Time relay)</summary>
+                    <ol>
+                        <li>Open <strong>Shortcuts → Automation → New Personal Automation</strong>.</li>
+                        <li>Trigger: <strong>App → Is Opened</strong>, pick Instagram, TikTok, etc.</li>
+                        <li>Action: <strong>Get Contents of URL</strong> →
+                            <code id="ios-url">POST http://&lt;your-host&gt;:5000/api/focus/report</code>,
+                            JSON body <code>{ "app": "instagram", "source": "ios-shortcut" }</code>.</li>
+                        <li>Turn <strong>Run Immediately</strong> on. Now opening Instagram pings Doom-Gate and strikes your stake.</li>
+                    </ol>
+                </details>
+
+                <div class="guard-test">
+                    <span>Simulate a breach:</span>
+                    <button class="chip chip--danger" data-breach="instagram">📷 Instagram</button>
+                    <button class="chip chip--danger" data-breach="tiktok">🎵 TikTok</button>
+                    <button class="chip chip--danger" data-breach="youtube">▶️ YouTube</button>
+                </div>
             </section>
+
+            <!-- ===== Trophy case + leaderboard ===== -->
+            <div class="grid-2">
+                <section class="card" id="achievements-card">
+                    <h2>Trophy Case</h2>
+                    <div class="trophies" id="trophies"></div>
+                </section>
+
+                <section class="card" id="leaderboard-card">
+                    <h2>Leaderboard</h2>
+                    <ol class="leaderboard" id="leaderboard"></ol>
+                </section>
+            </div>
         </main>
     </div>
 
-    <script src="app.js"></script>
+    <!-- ===== Last Chance quiz modal ===== -->
+    <div class="modal hidden" id="quiz-modal">
+        <div class="modal__box">
+            <h2>🧠 Last Chance Rescue</h2>
+            <p class="modal__sub">Answer correctly to save your stake (10% fee). Wrong answer = instant liquidation.</p>
+            <p id="quiz-question" class="quiz-question">Loading AI question…</p>
+            <div id="quiz-options" class="quiz-options"></div>
+            <div id="quiz-feedback" class="quiz-feedback"></div>
+        </div>
+    </div>
+
+    <!-- ===== Toasts + confetti ===== -->
+    <div id="toast-stack" class="toast-stack"></div>
+    <canvas id="confetti" class="confetti"></canvas>
+
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>

@@ -1,44 +1,111 @@
-# Doom-Gate: Focus Casino Architecture
+# Doom-Gate: Focus Casino — Architecture
 
-This document describes the high-level architecture of the Doom-Gate: Focus Casino application.
+Doom-Gate is a digital-wellbeing app disguised as a casino. You **stake tokens on your own
+ability to stay focused**. Survive the timer and your tokens multiply; reach for social media and
+the **Focus Guard** strikes your stake. Tokens are virtual and can only be earned by focusing, so
+every reward reinforces the behaviour the app exists to encourage.
+
+This document describes the layered architecture introduced in the clean rewrite.
 
 ## System Components
 
-The application is divided into two primary components: a streamlined Backend API and a Vanilla JavaScript Frontend.
+```
+Backend (ASP.NET Core Minimal API)            Frontend (Vanilla JS, ES modules)
+┌─────────────────────────────┐               ┌──────────────────────────────┐
+│ Program.cs (composition root)│               │ index.html / style.css       │
+│  ├─ Endpoints/   (HTTP layer)│  ◀── REST ──▶ │ js/                          │
+│  ├─ Services/    (game logic)│   JSON/CORS   │  ├─ app.js      (wiring)     │
+│  └─ Models/      (data)      │               │  ├─ api.js      (fetch)      │
+└─────────────────────────────┘               │  ├─ store.js    (state)      │
+                                               │  ├─ ui.js       (render)     │
+                                               │  ├─ timer.js    (countdown)  │
+                                               │  ├─ focusGuard.js (detection)│
+                                               │  └─ effects.js  (juice)      │
+                                               └──────────────────────────────┘
+```
 
-### 1. Backend (C# ASP.NET Core Minimal API)
+## Backend (C# / .NET 8)
 
-The backend is built as a highly consolidated Minimal API using .NET 8. It handles the core gambling logic, state management, and external AI integrations directly within `Program.cs`.
+A thin Minimal API. `Program.cs` does nothing but compose: register services, configure CORS and
+the Gemini `HttpClient`, then call `app.MapDoomGateEndpoints()`. Everything else is layered.
 
-- API Framework: ASP.NET Core Minimal APIs
-- Language: C#
-- State Management: In-Memory static variables managing the user's `Wallet` and `ActiveStake`
-- AI Integration: Direct HTTP integration with the Google Gemini REST API via HttpClient for the "Last Chance" quiz
-- Primary Endpoints:
-  - GET /api/casino/state: Retrieves the user's total tokens and current active stake (if any).
-  - POST /api/casino/stake: Accepts a stake amount and duration, deducting tokens and initiating the focus session.
-  - POST /api/casino/liquidate: Destroys the active stake completely if the user loses focus.
-  - POST /api/casino/claim: Validates the elapsed time and rewards the user with a 2x multiplier if successful.
-  - GET /api/quiz/generate: Requests a JSON-formatted computer-science quiz from Gemini AI.
-  - POST /api/quiz/submit: Validates the user's answer. A correct answer rescues the stake (with a 10% penalty), while a wrong answer triggers immediate liquidation.
+### Models (`Backend/Models/`)
+Plain data — no behaviour.
+- `GameModels.cs` — `Wallet`, `ActiveStake`, `PlayerProfile`, `Achievement`.
+- `QuizModels.cs` — `QuizSession`, `QuizData`, and the Gemini REST response shapes.
+- `Dtos.cs` — request/response records (`StakeRequest`, `DistractionReport`, `CasinoStateResponse`,
+  `MultiplierBreakdown`, `PlayerSummary`) and the `ServiceResult` envelope.
 
-### 2. Frontend (Vanilla JavaScript)
+### Services (`Backend/Services/`)
+All game rules live here. Endpoints stay one line each.
+- `GameState` — the single in-memory source of truth (wallet, active stake, profile). All access
+  is serialised through `Mutate`/`Read`, so services never touch locks.
+- `GamificationService` — levels/XP, streaks, the transparent payout multiplier, achievements,
+  the daily bonus and the leaderboard. Stateless; operates on the profile/wallet passed in.
+- `CasinoService` — the betting lifecycle: place, claim, liquidate. Delegates all progression
+  side-effects to `GamificationService`.
+- `FocusGuardService` — turns a distraction signal into a consequence (the two-strike system).
+- `QuizService` — the "Last Chance" rescue: generates a question (Gemini when a key is configured,
+  otherwise a built-in bank) and validates answers. The correct index never leaves the server.
 
-The frontend is a lightweight client built without heavy frameworks to ensure maximum performance and simplicity.
+### Endpoints (`Backend/Endpoints/`)
+One extension class per concern, each mapping routes to a service. `EndpointExtensions.ToHttp()`
+converts a domain `ServiceResult` into an HTTP response, so success/error handling is uniform.
 
-- Technologies: HTML5, CSS3, Vanilla JavaScript
-- Styling: Custom CSS variables for a dark-mode neon casino theme
-- State Synchronization: Interacts asynchronously with the C# backend to display token counts, active stakes, countdown timers, and AI-generated rescue quizzes.
-- Component Logic: Separated into clear functional blocks inside app.js (Initialization, Casino API Calls, Timer Management, UI Rendering).
+| Group        | Routes |
+|--------------|--------|
+| Casino       | `GET /api/casino/state`, `POST /api/casino/stake`, `POST /api/casino/claim`, `POST /api/casino/liquidate` |
+| Quiz         | `GET /api/quiz/generate`, `POST /api/quiz/submit` |
+| Focus Guard  | `GET /api/focus/config`, `POST /api/focus/report` |
+| Player       | `GET /api/player/profile`, `GET /api/player/achievements`, `POST /api/player/daily-bonus`, `GET /api/player/leaderboard` |
 
-## Data Flow (Staking & Rescue Mechanism)
+## Frontend (Vanilla JS, ES modules)
 
-1. The user places a bet on the Frontend.
-2. The Frontend calls POST /api/casino/stake.
-3. The Backend verifies funds, creates an `ActiveStake`, and starts the timer.
-4. If the user maintains focus until the timer ends, they call POST /api/casino/claim and double their bet.
-5. If the user loses focus, they can attempt a rescue by requesting a quiz.
-6. The Frontend calls GET /api/quiz/generate on the Backend.
-7. The Backend calls the Gemini REST API, generates a question, securely stores the correct answer in memory, and returns the options.
-8. The Frontend calls POST /api/quiz/submit with the user's answer.
-9. The Backend verifies the answer. Success deducts a 10% penalty but saves the stake; failure instantly liquidates the stake.
+No framework, no build step — just ES modules served over HTTP. Each module owns one concern and
+the dependency direction is one-way: `app.js` wires everything; nothing imports `app.js`.
+
+- `config.js` — tunables (API base URL, grace periods).
+- `api.js` — the only place `fetch()` is called.
+- `store.js` — a tiny observable store; `set()` triggers a re-render via subscribers.
+- `ui.js` — pure DOM rendering driven by store state.
+- `timer.js` — the countdown clock and SVG progress ring.
+- `focusGuard.js` — the browser detector (Page Visibility API).
+- `effects.js` — toasts, confetti, WebAudio sound, animated counters.
+- `app.js` — subscribes the store to the UI and wires every user action.
+
+## The Focus Guard (the "block social media" feature)
+
+The guard receives distraction signals from two relays and applies a forgiving **two-strike**
+policy while a stake is live:
+
+1. **Browser relay** — `focusGuard.js` watches the Page Visibility API. Leave the tab for longer
+   than the grace period and it `POST`s `{ "app": "tab-blur" }` to `/api/focus/report`.
+2. **iOS Screen Time relay** — an iOS *personal automation* ("When Instagram is opened") runs a
+   Shortcut that `POST`s `{ "app": "instagram", "source": "ios-shortcut" }` to the same endpoint.
+   This is how Doom-Gate "blocks" native social apps: iOS itself detects the app launch and relays
+   it; the server then strikes the active stake.
+
+**Strike 1** forces a Last Chance quiz (rescue or lose). **Strike 2** in the same session
+liquidates the stake immediately. Winning a session after resisting a breach earns the *Iron Will*
+badge.
+
+## Engagement loop (why it's sticky)
+
+Deliberately *pro-social* gamification — the same toolkit habit-forming apps use, pointed at a
+healthy goal:
+- **Escalating multipliers** — longer focus and longer streaks pay more (shown itemised before you bet).
+- **XP & levels** with rank titles (Distractible → Focus Deity).
+- **Daily streaks** with a variable daily bonus that scales with progression.
+- **Achievements** that pay out tokens on unlock.
+- **Leaderboard** against friendly rival bots.
+- **Juice** — confetti, sound, animated counters and a heating-up timer ring.
+
+## Data Flow (staking & rescue)
+
+1. Player places a bet → `POST /api/casino/stake`. The server deducts tokens, locks in a multiplier
+   and creates the `ActiveStake`.
+2. The Focus Guard arms automatically. If the player stays focused, `POST /api/casino/claim` pays
+   out `stake × multiplier` and applies XP/streak/achievement rewards.
+3. If a distraction is reported, `FocusGuardService` issues a strike. The first strike opens a
+   rescue quiz (`GET /api/quiz/generate` → `POST /api/quiz/submit`); a correct answer saves the
+   stake for a 10% fee, a wrong answer (or a second strike) liquidates it.
